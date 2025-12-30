@@ -1,0 +1,30 @@
+          setTimeout(sendMarkup, 50);
+        }
+      };
+      sendMarkup();
+    } catch (e) {
+      setStatus('Could not write to popup window.', true);
+    }
+  };
+
+  const renderDiagram = async ({ openWindow = false } = {}) => {
+    const definition = cleanMermaidDefinition(textarea.value);
+    if (!definition) {
+      setStatus('Please provide a Mermaid definition.', true);
+      return;
+    }
+
+    // Open popup immediately so browsers treat it as user-initiated.
+    let popupHandle = null;
+    if (openWindow) {
+      const width = screen && screen.availWidth ? screen.availWidth : 1600;
+      const height = screen && screen.availHeight ? screen.availHeight : 900;
+      popupHandle = window.open(
+        '',
+        '_blank',
+        `noopener,noreferrer,width=${width},height=${height}`
+      );
+      if (!popupHandle) {
+        setStatus('Popup blocked. Allow popups to open the full viewer.', true);
+        openWindow = false;
+      } else {

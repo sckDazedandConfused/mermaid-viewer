@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mermaid Viewer with Zoom & Pan</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div>
+        <h1>Mermaid Viewer</h1>
+        <p>Render Mermaid diagrams locally, then zoom and pan the SVG output.</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="editor">
+        <div class="field-row">
+          <label for="mermaidText">Mermaid Definition</label>
+          <div class="actions">
+            <button id="openFileBtn" type="button">Open file…</button>
+            <select id="sampleSelect" title="Load a sample diagram">
+              <option value="">Custom</option>
+              <option value="flow">Flow</option>
+              <option value="sequence">Sequence</option>
+              <option value="gantt">Gantt</option>
+            </select>
+            <button id="renderBtn" class="primary">Render</button>
+          </div>
+        </div>
+        <textarea id="mermaidText" spellcheck="false" aria-label="Mermaid definition"></textarea>
+        <div class="hint">Mouse wheel or trackpad pinch to zoom. Drag the diagram to pan. Use Reset if the view gets away from you.</div>
+        <input id="filePicker" type="file" accept=".mmd,.mermaid,.md,.txt,.mermaid,.mmd,.txt" style="display:none" />
+      </section>
+
+      <section class="viewer">
+        <div class="toolbar">
+          <div id="status" class="status">Ready to render</div>
+          <div class="toolbar-buttons">
+            <button id="resetBtn" type="button">Reset view</button>
+          </div>
+        </div>
+        <div id="diagram" class="diagram" role="img" aria-label="Mermaid diagram area"></div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

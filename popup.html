@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mermaid Diagram Viewer</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#0b1020; --border:#1f2937; --text:#e5e7eb; --accent:#22d3ee; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; height:100%; }
+    body { font-family:Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    .frame { display:flex; flex-direction:column; min-height:100%; height:100%; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:#111827; border-bottom:1px solid var(--border); }
+    .toolbar .buttons { display:flex; gap:8px; }
+    button { font:inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#122031; color:var(--text); cursor:pointer; }
+    button.primary { background:linear-gradient(135deg,var(--accent),#06b6d4); color:#06222b; border:none; font-weight:700; }
+    button:hover { filter:brightness(1.05); }
+    .diagram { flex:1; min-height:0; background:#0b1020; padding:12px; overflow:hidden; }
+    .diagram svg { width:100%; height:100%; touch-action:none; }
+    .status { color:#9ca3af; font-size:14px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+</head>
+<body>
+  <div class="frame">
+    <div class="toolbar">
+      <div class="status" id="statusPopup">Scroll to zoom, drag to pan</div>
+      <div class="buttons">
+        <button id="saveBtn" class="primary" type="button">Save as PNG</button>
+        <button id="closeBtn" type="button">Close</button>
+      </div>
+    </div>
+    <div id="popupDiagram" class="diagram"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
