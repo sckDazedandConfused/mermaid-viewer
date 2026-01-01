@@ -39,8 +39,8 @@
     startOnLoad: false,
     securityLevel: 'loose',
     theme: 'default',
-    flowchart: { useMaxWidth: true },
-    sequence: { useMaxWidth: true }
+    flowchart: { useMaxWidth: true, htmlLabels: true },
+    sequence: { useMaxWidth: true, htmlLabels: true }
   });
 
   let panZoomInstance = null;
@@ -52,6 +52,9 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+
+  const stripControlChars = (value) =>
+    value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 
   const sliceFromMermaidStart = (raw) => {
     const lines = raw.split(/\r?\n/);
@@ -193,7 +196,8 @@
   const renderDiagram = async ({ openWindow = false } = {}) => {
     const rawInput = textarea.value || '';
     const definition = extractMermaidDefinition(rawInput);
-    const isMermaid = Boolean(definition);
+    const sanitizedDefinition = definition ? stripControlChars(definition) : '';
+    const isMermaid = Boolean(sanitizedDefinition);
 
     if (!rawInput.trim()) {
       setStatus('Please provide content to render.', true);
@@ -225,7 +229,7 @@
     setStatus('Rendering...');
 
     try {
-      const { svg } = await mermaid.render('mermaid-diagram-' + Date.now(), definition);
+      const { svg } = await mermaid.render('mermaid-diagram-' + Date.now(), sanitizedDefinition);
       diagram.innerHTML = svg;
       const svgElement = diagram.querySelector('svg');
       if (!svgElement) {
