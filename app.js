@@ -53,6 +53,14 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
 
+  const sliceFromMermaidStart = (raw) => {
+    const lines = raw.split(/\r?\n/);
+    const starterPattern = /^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline)\b/i;
+    const startIndex = lines.findIndex((line) => starterPattern.test(line));
+    if (startIndex === -1) return null;
+    return lines.slice(startIndex).join('\n');
+  };
+
   const cleanMermaidDefinition = (raw) => {
     if (!raw) return '';
     const lines = raw.split(/\r?\n/);
@@ -90,8 +98,9 @@
       return cleanMermaidDefinition(fencedMatch[1]);
     }
 
-    // Otherwise, try to detect by leading keyword
-    const cleaned = cleanMermaidDefinition(raw);
+    // Otherwise, try to detect by leading keyword; if not at top, slice from first starter line
+    const sliced = sliceFromMermaidStart(raw);
+    const cleaned = cleanMermaidDefinition(sliced || raw);
     const firstWord = cleaned.split(/\s+/)[0]?.toLowerCase() || '';
     const mermaidStarters = new Set([
       'graph',
