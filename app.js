@@ -45,6 +45,14 @@
 
   let panZoomInstance = null;
 
+  const escapeHtml = (value) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
   const cleanMermaidDefinition = (raw) => {
     if (!raw) return '';
     const lines = raw.split(/\r?\n/);
@@ -71,6 +79,39 @@
     }
 
     return lines.join('\n').trim();
+  };
+
+  const extractMermaidDefinition = (raw) => {
+    if (!raw) return null;
+
+    // Prefer explicit fenced mermaid blocks
+    const fencedMatch = raw.match(/```mermaid\s*([\s\S]*?)```/i);
+    if (fencedMatch) {
+      return cleanMermaidDefinition(fencedMatch[1]);
+    }
+
+    // Otherwise, try to detect by leading keyword
+    const cleaned = cleanMermaidDefinition(raw);
+    const firstWord = cleaned.split(/\s+/)[0]?.toLowerCase() || '';
+    const mermaidStarters = new Set([
+      'graph',
+      'flowchart',
+      'sequenceDiagram'.toLowerCase(),
+      'classDiagram'.toLowerCase(),
+      'stateDiagram'.toLowerCase(),
+      'erDiagram'.toLowerCase(),
+      'journey',
+      'gantt',
+      'pie',
+      'mindmap',
+      'timeline'
+    ]);
+
+    if (mermaidStarters.has(firstWord)) {
+      return cleaned;
+    }
+
+    return null;
   };
 
   const setStatus = (message, isError = false) => {
@@ -141,9 +182,23 @@
   });
 
   const renderDiagram = async ({ openWindow = false } = {}) => {
-    const definition = cleanMermaidDefinition(textarea.value);
-    if (!definition) {
-      setStatus('Please provide a Mermaid definition.', true);
+    const rawInput = textarea.value || '';
+    const definition = extractMermaidDefinition(rawInput);
+    const isMermaid = Boolean(definition);
+
+    if (!rawInput.trim()) {
+      setStatus('Please provide content to render.', true);
+      return;
+    }
+
+    destroyPanZoom();
+    diagram.innerHTML = '';
+
+    if (!isMermaid) {
+      // Render as plain text instead of failing.
+      const safeText = escapeHtml(rawInput);
+      diagram.innerHTML = `<pre class="plain-text">${safeText}</pre>`;
+      setStatus('Rendered as plain text (no Mermaid diagram detected).');
       return;
     }
 
@@ -158,8 +213,6 @@
       }
     }
 
-    destroyPanZoom();
-    diagram.innerHTML = '';
     setStatus('Rendering...');
 
     try {

@@ -1,0 +1,22 @@
+flowchart TD
+  root["tools/<br/>- Shared utilities root"]
+  root --> d["tools/dupe_scan/<br/>- Duplicate scan workspace"]
+
+  d --> config["config.json<br/>- roots: folders to scan<br/>- exclude: folder/file patterns<br/>- dup_criteria: hash|name_size<br/>- content_rules: strings/regex, case, types<br/>- actions: report_only|dry_run|apply<br/>- output: paths and formats"]
+
+  d --> main["scan.py<br/>- CLI entry point<br/>- loads config<br/>- orchestrates pipeline stages<br/>- writes reports and logs"]
+
+  d --> lib["lib/<br/>- internal modules"]
+  lib --> walk["lib/walk.py<br/>- filesystem traversal<br/>- metadata collection<br/>- path normalization"]
+  lib --> hash["lib/hash.py<br/>- size bucketing<br/>- partial + full hashing<br/>- hash cache"]
+  lib --> match["lib/match.py<br/>- duplicate grouping<br/>- primary selection rules<br/>- near name match (optional)"]
+  lib --> scan["lib/scan.py<br/>- content string/regex scan<br/>- text/binary detection<br/>- tag assignment"]
+  lib --> report["lib/report.py<br/>- CSV/JSON writers<br/>- summaries and stats<br/>- action list builder"]
+  lib --> actions["lib/actions.py<br/>- dry run simulation<br/>- move/delete execution<br/>- error handling policy"]
+  lib --> io["lib/io.py<br/>- safe file ops<br/>- temp files<br/>- path utilities"]
+
+  d --> out["output/<br/>- generated artifacts"]
+  out --> csv["report.csv<br/>- per file metadata<br/>- hash + dup group<br/>- flags + decisions"]
+  out --> json["report.json<br/>- structured report<br/>- pipeline stats"]
+  out --> log["log.txt<br/>- run log and errors"]
+  out --> actionscsv["actions_dry_run.csv<br/>- proposed actions<br/>- rationale + target paths"]

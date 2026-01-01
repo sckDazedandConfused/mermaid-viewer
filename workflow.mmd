@@ -1,0 +1,10 @@
+flowchart TD
+  A["Scope & Rules<br/>- Define root folders in scope<br/>- Set exclude patterns (.git, node_modules, temp)<br/>- Choose duplicate criteria (hash, name+size)<br/>- Define content rules (strings/regex, case, types)<br/>- Pick action policy (report only, dry run, apply)"] --> B["Inventory<br/>- Walk filesystem and collect metadata<br/>- Normalize paths and resolve symlinks if needed<br/>- Store results in list and CSV/JSON<br/>- Output becomes baseline dataset"]
+  B --> C["Fingerprint<br/>- Group by size before hashing<br/>- Hash content (e.g., SHA-256)<br/>- Partial hash for large files then full hash<br/>- Store hashes back into inventory"]
+  C --> D["Detect Duplicates<br/>- Group by hash and flag count > 1<br/>- Pick primary per group (newest, shortest, preferred)<br/>- Build duplicate map with group IDs<br/>- Feed review queue and actions"]
+  D --> E["Content Flags<br/>- Scan contents for strings/regex<br/>- Tag files with flags (confidential, deprecated)<br/>- Skip binary or excluded types<br/>- Flags influence decisions"]
+  E --> F["Report<br/>- Produce CSV/JSON with metadata, hash, flags<br/>- Summarize totals and size savings<br/>- Create human readable summary<br/>- Audit artifact before actions"]
+  F --> G["Review Queue<br/>- Generate action list with rationale<br/>- Include keep/move/delete targets<br/>- Allow manual overrides<br/>- Output is action plan"]
+  G --> H["Dry Run<br/>- Simulate actions without changes<br/>- Log planned moves/deletes<br/>- Detect conflicts and permission issues<br/>- Adjust rules based on results"]
+  H --> I["Apply<br/>- Execute approved actions<br/>- Log every operation for traceability<br/>- Handle errors per policy<br/>- Produce execution report"]
+  I --> J["Post Check<br/>- Re-scan or spot check results<br/>- Validate counts and sizes<br/>- Archive reports and logs<br/>- Optional backup snapshot"]
