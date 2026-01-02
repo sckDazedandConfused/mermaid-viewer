@@ -54,11 +54,28 @@
       .replace(/'/g, '&#39;');
 
   const stripControlChars = (value) =>
-    value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+    value
+      .replace(/\uFEFF/g, '')
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 
   const normalizeMermaidLabels = (definition) => {
     if (!definition) return '';
-    let normalized = definition;
+    const escapeBracketsInQuotes = (value) => {
+      const escape = (segment) =>
+        segment.replace(/\[/g, '&#91;').replace(/\]/g, '&#93;');
+
+      let updated = value.replace(/"[^"]*"/g, (match) => {
+        const inner = match.slice(1, -1);
+        return `"${escape(inner)}"`;
+      });
+      updated = updated.replace(/'[^']*'/g, (match) => {
+        const inner = match.slice(1, -1);
+        return `'${escape(inner)}'`;
+      });
+      return updated;
+    };
+
+    let normalized = escapeBracketsInQuotes(definition);
 
     const quotePipeLabel = (match, content) => {
       const trimmed = content.trim();
@@ -74,6 +91,7 @@
     const quoteBracketLabel = (match, content) => {
       const trimmed = content.trim();
       if (!trimmed) return match;
+      if (content.includes('[') || content.includes(']')) return match;
       if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
           (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
           trimmed.startsWith('[')) {
