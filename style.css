@@ -166,6 +166,85 @@ button:active {
   background: #0b1020;
 }
 
+.diagram .markdown-body {
+  height: 100%;
+  overflow: auto;
+  padding-right: 6px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.diagram .markdown-body h1,
+.diagram .markdown-body h2,
+.diagram .markdown-body h3,
+.diagram .markdown-body h4,
+.diagram .markdown-body h5,
+.diagram .markdown-body h6 {
+  margin: 0.9em 0 0.4em;
+  line-height: 1.3;
+}
+
+.diagram .markdown-body p {
+  margin: 0 0 0.8em;
+}
+
+.diagram .markdown-body ul,
+.diagram .markdown-body ol {
+  margin: 0 0 0.8em;
+  padding-left: 20px;
+}
+
+.diagram .markdown-body li {
+  margin: 0.2em 0;
+}
+
+.diagram .markdown-body code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-family: "Consolas", "Courier New", monospace;
+}
+
+.diagram .markdown-body pre {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+  margin: 0 0 1em;
+}
+
+.diagram .markdown-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin: 0 0 0.8em;
+  color: var(--muted);
+}
+
+.diagram .markdown-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+.diagram .embedded-mermaid {
+  margin: 12px 0;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #0b1020;
+}
+
+.diagram .render-error {
+  color: var(--error);
+  font-size: 13px;
+}
+
+.diagram .markdown-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .diagram svg {
   width: 100%;
   height: 100%;

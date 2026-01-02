@@ -56,6 +56,176 @@
   const stripControlChars = (value) =>
     value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 
+  const preserveLineBreakTags = (value) =>
+    value.replace(/<br\s*\/?>/gi, '[[BR]]');
+
+  const restoreLineBreakTags = (value) =>
+    value.replace(/\[\[BR\]\]/g, '<br/>');
+
+  const formatInlineMarkdown = (value) => {
+    let safe = escapeHtml(preserveLineBreakTags(value));
+    const codeSpans = [];
+    safe = safe.replace(/`([^`]+)`/g, (_match, code) => {
+      const token = `%%CODE${codeSpans.length}%%`;
+      codeSpans.push(code);
+      return token;
+    });
+
+    safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    safe = restoreLineBreakTags(safe);
+
+    codeSpans.forEach((code, index) => {
+      safe = safe.replace(`%%CODE${index}%%`, `<code>${code}</code>`);
+    });
+
+    return safe;
+  };
+
+  const formatParagraph = (lines) => {
+    const parts = lines.map((line) => {
+      const hasBreak = /\s{2}$/.test(line);
+      const trimmed = line.replace(/\s{2}$/, '');
+      const formatted = formatInlineMarkdown(trimmed);
+      return hasBreak ? `${formatted}<br/>` : formatted;
+    });
+    return `<p>${parts.join(' ')}</p>`;
+  };
+
+  const renderMarkdownToHtml = (markdown) => {
+    const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+    let html = '';
+    let i = 0;
+
+    const isBlockStart = (line) => {
+      if (!line) return false;
+      if (/^```/.test(line)) return true;
+      if (/^#{1,6}\s+/.test(line)) return true;
+      if (/^(\s*)(---+|\*\*\*+|___+)\s*$/.test(line)) return true;
+      if (/^\s*>\s?/.test(line)) return true;
+      if (/^\s*([-*+]|\d+[.)])\s+/.test(line)) return true;
+      return false;
+    };
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      if (line.trim() === '') {
+        i += 1;
+        continue;
+      }
+
+      const fenceMatch = line.match(/^```(\w+)?\s*$/);
+      if (fenceMatch) {
+        const lang = fenceMatch[1] || '';
+        const codeLines = [];
+        i += 1;
+        while (i < lines.length && !/^```/.test(lines[i])) {
+          codeLines.push(lines[i]);
+          i += 1;
+        }
+        if (i < lines.length) i += 1;
+        const code = escapeHtml(codeLines.join('\n'));
+        html += `<pre><code${lang ? ` class="language-${lang}"` : ''}>${code}</code></pre>`;
+        continue;
+      }
+
+      const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        html += `<h${level}>${formatInlineMarkdown(headingMatch[2].trim())}</h${level}>`;
+        i += 1;
+        continue;
+      }
+
+      if (/^(\s*)(---+|\*\*\*+|___+)\s*$/.test(line)) {
+        html += '<hr/>';
+        i += 1;
+        continue;
+      }
+
+      if (/^\s*>\s?/.test(line)) {
+        const quoteLines = [];
+        while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+          quoteLines.push(lines[i].replace(/^\s*>\s?/, ''));
+          i += 1;
+        }
+        html += `<blockquote>${formatParagraph(quoteLines)}</blockquote>`;
+        continue;
+      }
+
+      const listMatch = line.match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
+      if (listMatch) {
+        const ordered = /\d+[.)]/.test(listMatch[1]);
+        const items = [];
+        while (i < lines.length) {
+          const current = lines[i].match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
+          if (!current) break;
+          items.push(current[2]);
+          i += 1;
+        }
+        const tag = ordered ? 'ol' : 'ul';
+        html += `<${tag}>${items.map((item) => `<li>${formatInlineMarkdown(item)}</li>`).join('')}</${tag}>`;
+        continue;
+      }
+
+      const paragraphLines = [];
+      while (i < lines.length && lines[i].trim() !== '' && !isBlockStart(lines[i])) {
+        paragraphLines.push(lines[i]);
+        i += 1;
+      }
+      html += formatParagraph(paragraphLines);
+    }
+
+    return html;
+  };
+
+  const splitMarkdownBlocks = (markdown) => {
+    const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+    const blocks = [];
+    let buffer = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^```\s*mermaid\s*$/i.test(line)) {
+        if (buffer.length) {
+          blocks.push({ type: 'markdown', content: buffer.join('\n') });
+          buffer = [];
+        }
+        i += 1;
+        const mermaidLines = [];
+        while (i < lines.length && !/^```/.test(lines[i])) {
+          mermaidLines.push(lines[i]);
+          i += 1;
+        }
+        if (i < lines.length) i += 1;
+        blocks.push({ type: 'mermaid', content: mermaidLines.join('\n') });
+        continue;
+      }
+      buffer.push(line);
+      i += 1;
+    }
+
+    if (buffer.length) {
+      blocks.push({ type: 'markdown', content: buffer.join('\n') });
+    }
+
+    return blocks;
+  };
+
+  const isPureMermaidInput = (raw, definition) => {
+    if (!definition) return false;
+    if (/```\s*mermaid/i.test(raw)) {
+      const remainder = raw.replace(/```\s*mermaid[\s\S]*?```/gi, '').trim();
+      return remainder.length === 0;
+    }
+    const sliced = sliceFromMermaidStart(raw);
+    if (!sliced) return false;
+    const prefix = raw.slice(0, raw.indexOf(sliced));
+    return prefix.trim().length === 0;
+  };
+
   const sliceFromMermaidStart = (raw) => {
     const lines = raw.split(/\r?\n/);
     const starterPattern = /^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline)\b/i;
@@ -96,7 +266,7 @@
     if (!raw) return null;
 
     // Prefer explicit fenced mermaid blocks
-    const fencedMatch = raw.match(/```mermaid\s*([\s\S]*?)```/i);
+    const fencedMatch = raw.match(/```\s*mermaid\s*([\s\S]*?)```/i);
     if (fencedMatch) {
       return cleanMermaidDefinition(fencedMatch[1]);
     }
@@ -193,25 +363,66 @@
     }
   });
 
+  const renderMarkdownWithMermaid = async (markdown) => {
+    destroyPanZoom();
+    diagram.innerHTML = '';
+
+    const blocks = splitMarkdownBlocks(markdown);
+    const mermaidBlocks = [];
+    let html = '';
+    let index = 0;
+
+    blocks.forEach((block) => {
+      if (block.type === 'markdown') {
+        html += renderMarkdownToHtml(block.content);
+      } else {
+        const id = `mermaid-inline-${Date.now()}-${index++}`;
+        mermaidBlocks.push({ id, code: stripControlChars(block.content) });
+        html += `<div class="embedded-mermaid" data-mermaid-id="${id}"></div>`;
+      }
+    });
+
+    if (!html.trim()) {
+      html = '<p class="markdown-empty">No content to render.</p>';
+    }
+
+    diagram.innerHTML = `<div class="markdown-body">${html}</div>`;
+
+    let errorCount = 0;
+    for (const block of mermaidBlocks) {
+      const host = diagram.querySelector(`[data-mermaid-id="${block.id}"]`);
+      if (!host) continue;
+      try {
+        const { svg } = await mermaid.render(block.id, block.code);
+        host.innerHTML = svg;
+      } catch (err) {
+        errorCount += 1;
+        host.innerHTML = `<div class="render-error">Mermaid error: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    if (errorCount > 0) {
+      setStatus(`Rendered markdown with ${errorCount} Mermaid error(s).`, true);
+    } else {
+      setStatus('Rendered markdown.');
+    }
+  };
+
   const renderDiagram = async ({ openWindow = false } = {}) => {
     const rawInput = textarea.value || '';
-    const definition = extractMermaidDefinition(rawInput);
+    const sanitizedInput = stripControlChars(rawInput);
+    const definition = extractMermaidDefinition(sanitizedInput);
     const sanitizedDefinition = definition ? stripControlChars(definition) : '';
     const isMermaid = Boolean(sanitizedDefinition);
+    const isPureMermaid = isMermaid && isPureMermaidInput(sanitizedInput, sanitizedDefinition);
 
     if (!rawInput.trim()) {
       setStatus('Please provide content to render.', true);
       return;
     }
 
-    destroyPanZoom();
-    diagram.innerHTML = '';
-
-    if (!isMermaid) {
-      // Render as plain text instead of failing.
-      const safeText = escapeHtml(rawInput);
-      diagram.innerHTML = `<pre class="plain-text">${safeText}</pre>`;
-      setStatus('Rendered as plain text (no Mermaid diagram detected).');
+    if (!isPureMermaid) {
+      await renderMarkdownWithMermaid(sanitizedInput);
       return;
     }
 
@@ -226,7 +437,9 @@
       }
     }
 
-    setStatus('Rendering...');
+    destroyPanZoom();
+    diagram.innerHTML = '';
+    setStatus('Rendering diagram...');
 
     try {
       const { svg } = await mermaid.render('mermaid-diagram-' + Date.now(), sanitizedDefinition);
