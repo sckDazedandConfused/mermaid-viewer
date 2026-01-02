@@ -44,6 +44,8 @@
   });
 
   let panZoomInstance = null;
+  let lastLoadedFileName = '';
+  let lastLoadedExtension = '';
 
   const escapeHtml = (value) =>
     value
@@ -104,6 +106,19 @@
     normalized = normalized.replace(/\|([^|\n]+)\|/g, quotePipeLabel);
     normalized = normalized.replace(/\[([^\]\n]+)\]/g, quoteBracketLabel);
     return normalized;
+  };
+
+  const renderMermaidSvg = async (id, source, { normalizeOnFail = true } = {}) => {
+    const cleaned = cleanMermaidDefinition(stripControlChars(source));
+    try {
+      return await mermaid.render(id, cleaned);
+    } catch (err) {
+      if (!normalizeOnFail) {
+        throw err;
+      }
+      const normalized = normalizeMermaidLabels(cleaned);
+      return await mermaid.render(id, normalized);
+    }
   };
 
   const preserveLineBreakTags = (value) =>
@@ -262,6 +277,17 @@
     }
 
     return blocks;
+  };
+
+  const resolveRenderMode = (raw, definition) => {
+    const ext = (lastLoadedExtension || '').toLowerCase();
+    if (ext === 'mmd' || ext === 'mermaid') return 'mermaid';
+    if (ext === 'md' || ext === 'markdown') {
+      if (definition && isPureMermaidInput(raw, definition)) return 'mermaid';
+      return 'markdown';
+    }
+    if (definition && isPureMermaidInput(raw, definition)) return 'mermaid';
+    return 'markdown';
   };
 
   const isPureMermaidInput = (raw, definition) => {
@@ -427,8 +453,7 @@
         html += renderMarkdownToHtml(block.content);
       } else {
         const id = `mermaid-inline-${Date.now()}-${index++}`;
-        const normalizedBlock = normalizeMermaidLabels(stripControlChars(block.content));
-        mermaidBlocks.push({ id, code: normalizedBlock });
+        mermaidBlocks.push({ id, code: block.content });
         html += `<div class="embedded-mermaid" data-mermaid-id="${id}"></div>`;
       }
     });
@@ -444,7 +469,7 @@
       const host = diagram.querySelector(`[data-mermaid-id="${block.id}"]`);
       if (!host) continue;
       try {
-        const { svg } = await mermaid.render(block.id, block.code);
+        const { svg } = await renderMermaidSvg(block.id, block.code, { normalizeOnFail: true });
         host.innerHTML = svg;
       } catch (err) {
         errorCount += 1;
@@ -463,20 +488,19 @@
     const rawInput = textarea.value || '';
     const sanitizedInput = stripControlChars(rawInput);
     const definition = extractMermaidDefinition(sanitizedInput);
-    const sanitizedDefinition = definition ? stripControlChars(definition) : '';
-    const isMermaid = Boolean(sanitizedDefinition);
-    const isPureMermaid = isMermaid && isPureMermaidInput(sanitizedInput, sanitizedDefinition);
-    const normalizedDefinition = normalizeMermaidLabels(sanitizedDefinition);
+    const renderMode = resolveRenderMode(sanitizedInput, definition);
 
     if (!rawInput.trim()) {
       setStatus('Please provide content to render.', true);
       return;
     }
 
-    if (!isPureMermaid) {
+    if (renderMode === 'markdown') {
       await renderMarkdownWithMermaid(sanitizedInput);
       return;
     }
+
+    const mermaidSource = definition || cleanMermaidDefinition(sanitizedInput);
 
     // Open popup immediately so browsers treat it as user-initiated.
     if (openWindow) {
@@ -494,7 +518,7 @@
     setStatus('Rendering diagram...');
 
     try {
-      const { svg } = await mermaid.render('mermaid-diagram-' + Date.now(), normalizedDefinition);
+      const { svg } = await renderMermaidSvg('mermaid-diagram-' + Date.now(), mermaidSource, { normalizeOnFail: true });
       diagram.innerHTML = svg;
       const svgElement = diagram.querySelector('svg');
       if (!svgElement) {
@@ -525,6 +549,8 @@
     const sample = samples[key];
     if (sample) {
       textarea.value = sample;
+      lastLoadedFileName = `sample:${key}`;
+      lastLoadedExtension = 'mmd';
     }
   };
 
@@ -535,6 +561,9 @@
   const handleFileSelection = async (event) => {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
+    lastLoadedFileName = file.name;
+    const parts = file.name.split('.');
+    lastLoadedExtension = parts.length > 1 ? parts.pop().toLowerCase() : '';
     setStatus(`Loading ${file.name}...`);
     try {
       const text = await file.text();
