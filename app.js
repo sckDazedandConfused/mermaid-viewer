@@ -56,6 +56,38 @@
   const stripControlChars = (value) =>
     value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 
+  const normalizeMermaidLabels = (definition) => {
+    if (!definition) return '';
+    let normalized = definition;
+
+    const quotePipeLabel = (match, content) => {
+      const trimmed = content.trim();
+      if (!trimmed) return match;
+      if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+          (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        return match;
+      }
+      const escaped = content.replace(/"/g, '\\"');
+      return `|"${escaped}"|`;
+    };
+
+    const quoteBracketLabel = (match, content) => {
+      const trimmed = content.trim();
+      if (!trimmed) return match;
+      if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+          (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+          trimmed.startsWith('[')) {
+        return match;
+      }
+      const escaped = content.replace(/"/g, '\\"');
+      return `["${escaped}"]`;
+    };
+
+    normalized = normalized.replace(/\|([^|\n]+)\|/g, quotePipeLabel);
+    normalized = normalized.replace(/\[([^\]\n]+)\]/g, quoteBracketLabel);
+    return normalized;
+  };
+
   const preserveLineBreakTags = (value) =>
     value.replace(/<br\s*\/?>/gi, '[[BR]]');
 
@@ -377,7 +409,8 @@
         html += renderMarkdownToHtml(block.content);
       } else {
         const id = `mermaid-inline-${Date.now()}-${index++}`;
-        mermaidBlocks.push({ id, code: stripControlChars(block.content) });
+        const normalizedBlock = normalizeMermaidLabels(stripControlChars(block.content));
+        mermaidBlocks.push({ id, code: normalizedBlock });
         html += `<div class="embedded-mermaid" data-mermaid-id="${id}"></div>`;
       }
     });
@@ -415,6 +448,7 @@
     const sanitizedDefinition = definition ? stripControlChars(definition) : '';
     const isMermaid = Boolean(sanitizedDefinition);
     const isPureMermaid = isMermaid && isPureMermaidInput(sanitizedInput, sanitizedDefinition);
+    const normalizedDefinition = normalizeMermaidLabels(sanitizedDefinition);
 
     if (!rawInput.trim()) {
       setStatus('Please provide content to render.', true);
@@ -442,7 +476,7 @@
     setStatus('Rendering diagram...');
 
     try {
-      const { svg } = await mermaid.render('mermaid-diagram-' + Date.now(), sanitizedDefinition);
+      const { svg } = await mermaid.render('mermaid-diagram-' + Date.now(), normalizedDefinition);
       diagram.innerHTML = svg;
       const svgElement = diagram.querySelector('svg');
       if (!svgElement) {
